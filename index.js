@@ -3,47 +3,67 @@
 'use strict';
 
 var map = require('map-stream'),
-    path = require('path'),
-    gutil = require('gulp-util'),
-    mkdirp = require('mkdirp'),
-    fs = require('fs');
+  path = require('path'),
+  gutil = require('gulp-util'),
+  mkdirp = require('mkdirp'),
+  fs = require('fs');
 
-function localPath(absolutePath) {
-    var cwd = process.cwd();
-    return absolutePath.indexOf(cwd) === 0 ? absolutePath.substr(cwd.length + 1) : absolutePath;
+var NAME = 'gulp-symlink';
+
+function newError(msg) {
+  return new gutil.PluginError(NAME, msg);
 }
 
-module.exports = function(out) {
-    return map(function(file, cb) {
-        if (typeof out === 'undefined') {
-            cb(new gutil.PluginError('gulp-symlink', 'A destination folder is required.'));
+function localPath(absolutePath) {
+  var cwd = process.cwd();
+  return absolutePath.indexOf(cwd) === 0
+      ? absolutePath.substr(cwd.length + 1)
+      : absolutePath;
+}
+
+var M = gutil.colors.magenta;
+
+module.exports = function(out, options) {
+  if (!out) {
+    throw newError('A destination folder is required.');
+  }
+
+  options = options || {};
+
+  // resolve and normalize output path.
+  var dest = path.resolve(process.cwd(), out);
+
+  return map(function(file, cb) {
+    var fileName = path.basename(file.path);
+    var relativeSym = options.createDirs ? localPath(file.path) : fileName;
+    var sym = path.join(path.resolve(file.base, dest), relativeSym);
+
+    gutil.log(NAME, M(localPath(sym)), '->', M(localPath(file.path)));
+
+    function createDirsThenLink(err) {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          return mkdirp(path.dirname(sym), createLink);
         }
+        return cb(newError(err));
+      }
+      finish(err);
+    }
 
-        var dest = path.resolve(process.cwd(), out);
-        var sym = path.join(path.resolve(file.base, dest), path.basename(file.path));
+    function createLink(err) {
+      if (err) {
+        return cb(newError(err));
+      }
+      fs.symlink(file.path, sym, finish);
+    }
 
-        gutil.log('Symlink', gutil.colors.magenta(localPath(sym)), '->', gutil.colors.magenta(localPath(file.path)));
+    function finish(err) {
+      if (err && err.code !== 'EEXIST') {
+        return cb(newError(err));
+      }
+      cb(null, file);
+    }
 
-        function finish(err) {
-            if (err && err.code !== 'EEXIST') {
-                return cb(new gutil.PluginError('gulp-symlink', err));
-            }
-            cb(null, file);
-        }
-
-        fs.symlink(file.path, sym, function(err) {
-            // Most likely there's no directory there...
-            if (err && err.code === 'ENOENT') {
-                // Recursively make directories in case we want a nested symlink
-                return mkdirp(dest, function(err) {
-                    if (err) {
-                        return cb(new gutil.PluginError('gulp-symlink', err), file);
-                    }
-                    fs.symlink(file.path, sym, finish);
-                });
-            }
-
-            finish(err);
-        });
-    });
+    fs.symlink(file.path, sym, createDirsThenLink);
+  });
 };
