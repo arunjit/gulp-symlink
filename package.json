@@ -32,7 +32,8 @@
     "gulp-mocha": "~0.4.1",
     "gulp-jshint": "~1.4.0",
     "jshint-stylish": "~0.1.5",
-    "mocha": "~1.17.1"
+    "mocha": "~1.17.1",
+    "fs.extra": "~1.2.1"
   },
   "main": "index.js"
 }

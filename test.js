@@ -1,6 +1,6 @@
 /* jshint node: true */
 /* jshint expr: true */
-/* global describe, it, before, after */
+/* global describe, it, after */
 
 'use strict';
 
@@ -8,7 +8,7 @@ var expect = require('chai').expect,
   gutil = require('gulp-util'),
   symlink = require('./index'),
   path = require('path'),
-  fs = require('fs');
+  fs = require('fs.extra');
 
 // silence the log, maybe there's a better way?
 gutil.log = function() {};
@@ -24,7 +24,6 @@ describe('gulp-symlink', function() {
   });
 
   function test(testDir) {
-    var cleanup;
     var fileName = 'somefile.js';
 
     function newFile() {
@@ -33,17 +32,8 @@ describe('gulp-symlink', function() {
       });
     }
 
-    before(function() {
-      cleanup = null;
-    });
-
     it('should create symlinks', function(cb) {
       var testSym = path.join(testDir, fileName);
-      cleanup = function() {
-        fs.unlinkSync(testSym);
-        console.log(testSym, 'unlinked');
-      };
-      console.log('creating', testSym);
 
       var stream = symlink(testDir);
 
@@ -59,13 +49,6 @@ describe('gulp-symlink', function() {
     it('should create symlinks with nested directories', function(cb) {
       var nestedDir = path.join(testDir, 'sub');
       var testSym = path.join(nestedDir, fileName);
-      cleanup = function() {
-        fs.unlinkSync(testSym);
-        console.log(testSym, 'unlinked');
-        fs.rmdirSync(nestedDir);
-        console.log(nestedDir, 'rmdir');
-      };
-      console.log('creating', testSym, 'in', nestedDir);
 
       var stream = symlink(nestedDir);
 
@@ -81,13 +64,6 @@ describe('gulp-symlink', function() {
     it('should create directories for nested symlinks', function(cb) {
       var nestedDir = path.join(testDir, 'testdata');
       var testSym = path.join(nestedDir, fileName);
-      cleanup = function() {
-        fs.unlinkSync(testSym);
-        console.log(testSym, 'unlinked');
-        fs.rmdirSync(nestedDir);
-        console.log(nestedDir, 'rmdir');
-      };
-      console.log('creating', testSym, 'in', nestedDir);
 
       var stream = symlink(testDir, {createDirs: true});
 
@@ -101,8 +77,7 @@ describe('gulp-symlink', function() {
     });
 
     after(function() {
-      (cleanup && cleanup()) || console.log('no cleanup');
-      fs.rmdirSync(testDir);
+      fs.rmrfSync(testDir);
     });
   }
 
