@@ -41,11 +41,8 @@ module.exports = function(out, options) {
     gutil.log(NAME, M(localPath(sym)), '->', M(localPath(file.path)));
 
     function createDirsThenLink(err) {
-      if (err) {
-        if (err.code === 'ENOENT') {
-          return mkdirp(path.dirname(sym), createLink);
-        }
-        return cb(newError(err));
+      if (err && err.code === 'ENOENT') {
+        return mkdirp(path.dirname(sym), createLink);
       }
       finish(err);
     }
